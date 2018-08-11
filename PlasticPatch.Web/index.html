@@ -90,16 +90,12 @@
     }
 
     function Boat(scene) {
-        let shape = new THREE.Shape();
-        shape.moveTo(-3, 0);
-        shape.lineTo(-3, 15);
-        shape.lineTo(0, 20);
-        shape.lineTo(3, 15);
-        shape.lineTo(3, 0);
-        shape.lineTo(0, 0);
-        let material = new THREE.MeshBasicMaterial({ color: 0x111111 });
-        let geometry = new THREE.ShapeGeometry(shape);
-        let boatMesh = new THREE.Mesh(geometry, material);
+
+        var spriteMap = new THREE.TextureLoader().load( "images/boat.png" );
+        var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff } );
+        var sprite = new THREE.Sprite( spriteMaterial );
+        sprite.scale.set(20, 40, 0);
+        sprite.position.set(0, 3, 1);
 
         var curve1 = new THREE.EllipseCurve(
             0,  -7,            // ax, aY
@@ -109,28 +105,17 @@
             0                 // aRotation
         );
 
-        var curve2 = new THREE.EllipseCurve(
-            0,  -7,            // ax, aY
-            6.9, 6.9,           // xRadius, yRadius
-            0,  2 * Math.PI,  // aStartAngle, aEndAngle
-            false,            // aClockwise
-            0                 // aRotation
-        );
-
         var curveGeo = new THREE.BufferGeometry().setFromPoints(curve1.getPoints(50));
-        var curveGeo2 = new THREE.BufferGeometry().setFromPoints(curve2.getPoints(50));
-        var curveMat = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+        var curveMat = new THREE.LineBasicMaterial( { color : 0x000088 } );
 
         // Create the final object to add to the scene
         var ellipse = new THREE.Line( curveGeo, curveMat );
-        var ellipse2 = new THREE.Line(curveGeo2, curveMat);
 
         ellipse.position.set(0, 0, -1);
 
         this.obj = new THREE.Object3D();
         this.obj.add(ellipse);
-        this.obj.add(ellipse2);
-        this.obj.add(boatMesh);
+        this.obj.add(sprite);
 
         this.obj.position.set(width / 2, height / 2, 1);
 
@@ -156,6 +141,7 @@
                 ang = Math.atan(tan) + Math.PI / 2;
             }
             this.vectorAngle = ang;
+            spriteMaterial.rotation = ang;
             this.obj.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), ang);
         }
 
@@ -222,31 +208,26 @@
 
     function Burner() {
 
-        let shape = new THREE.Shape();
-        shape.moveTo(0, 0);
-        shape.lineTo(0, 40);
-        shape.lineTo(40, 40);
-        shape.lineTo(40, 0);
-        shape.lineTo(0, 0);
+        let spriteMap = new THREE.TextureLoader().load("images/burner.png");
+        let spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
+        let sprite = new THREE.Sprite(spriteMaterial);
 
-        let material = new THREE.MeshBasicMaterial({ color: 0x111111 });
-        let geo = new THREE.ShapeGeometry(shape);
-        let mesh = new THREE.Mesh(geo, material);
+        sprite.scale.set(100, 100, 0);
+        sprite.position.set(width - 50, 6, 0);
 
-        mesh.position.set(width - 50, 10, 0);
-
-        scene.add(mesh);
+        scene.add(sprite);
 
         this.box = new THREE.Box3();
-        this.box.setFromObject(mesh);
+        this.box.setFromObject(sprite);
 
     }
 
-    let burner = new Burner();
 
     let topbar = document.getElementById("topbar");
 
     let boat = new Boat(scene);
+
+    let burner = new Burner();
 
     let allTrash = [];
     allTrash.push(new Trash(scene));
