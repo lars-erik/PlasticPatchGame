@@ -4,13 +4,22 @@
     <meta charset="utf-8" />
     <title></title>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
         canvas { width: 100%; height: 100% }
+        #topbar {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <script src="scripts/three.js"></script>
-    <script src="scripts/perlin.js"></script>
+<script src="scripts/perlin.js"></script>
+<div id="topbar">
+    Space: 5
+</div>
 <script>
 
     var scene = new THREE.Scene();
@@ -66,12 +75,17 @@
         this.line.position.set(-10, height / 2 + (Math.random() * height / 5) - (height / 10 * Math.random()), 0);
         this.vector = new THREE.Vector3(.001, Math.random() * height, 0);
 
-        this.update = function() {
+        this.box = new THREE.Box3();
+        this.box.setFromObject(this.line);
+
+        this.update = function () {
             var ang = Math.atan(this.vector.y);
             var force = noiseSet.noise([Math.abs(this.line.position.x * noiseScale), Math.abs(this.line.position.y * noiseScale)]);
             var newAng = ang + force;
             var newVector = new THREE.Vector3(Math.sin(newAng) * .1, Math.cos(newAng) * -.1, 0);
             this.line.position.add(newVector);
+            this.box.setFromObject(this.line);
+
         }
     }
 
@@ -116,9 +130,15 @@
         this.obj.add(ellipse2);
         this.obj.add(boatMesh);
 
-        this.obj.position.set(width / 2, height / 2, 0);
+        this.obj.position.set(width / 2, height / 2, 1);
 
         scene.add(this.obj);
+
+        this.ellipse = ellipse;
+        this.box = new THREE.Box3();
+        //this.fullBox = new THREE.Box3();
+
+        this.target = this.obj.position.clone();
 
         this.lookatTarget = function() {
             let ang = 0;
@@ -140,28 +160,85 @@
         this.vector = new THREE.Vector3(0, 0, 0);
 
         this.setTarget = function (x, y) {
-            this.target = new THREE.Vector3(x, y, 0);
+            let xDist = Math.abs(this.target.x - x);
+            let yDist = Math.abs(this.target.y - y);
+
+            if (xDist < 3 && yDist < 3) {
+                return;
+            }
+
+            this.target.set(x, y, 0);
             this.lookatTarget();
         }
 
         let speed = 1;
         this.move = function () {
+            let xDist = Math.abs(this.target.x - this.obj.position.x);
+            let yDist = Math.abs(this.target.y - this.obj.position.y);
+
+            if (xDist < 3 && yDist < 3) {
+                return;
+            }
+
+            //if (burner.box.intersectsBox(this.fullBox)) {
+            //    return;
+            //}
+
             this.lookatTarget();
             let moveY = Math.cos(this.vectorAngle) * speed;
             let moveX = Math.sin(this.vectorAngle) * speed * -1;
-            this.obj.position.add(new THREE.Vector3(moveX, moveY, 0));
+            this.obj.position.add(new THREE.Vector3(moveX, moveY, 1));
         }
+
+        this.update = function() {
+            this.box.setFromObject(this.ellipse);
+            //this.fullBox.setFromObject(this.obj);
+        }
+
+        this.pickup = function (trash) {
+            this.space--;
+            this.obj.add(trash.line);
+            trash.line.position.set(0, -7, 0);
+        }
+
+        this.space = 5;
     }
+
+    //function Burner() {
+
+    //    let shape = new THREE.Shape();
+    //    shape.moveTo(0, 0);
+    //    shape.lineTo(0, 40);
+    //    shape.lineTo(40, 40);
+    //    shape.lineTo(40, 0);
+    //    shape.lineTo(0, 0);
+
+    //    let material = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    //    let geo = new THREE.ShapeGeometry(shape);
+    //    let mesh = new THREE.Mesh(geo, material);
+
+    //    mesh.position.set(width - 50, 10, 0);
+
+    //    scene.add(mesh);
+
+    //    this.box = new THREE.Box3();
+    //    this.box.setFromObject(mesh);
+
+    //}
+
+    //let burner = new Burner();
+
+    let topbar = document.getElementById("topbar");
 
     let boat = new Boat(scene);
 
-    var allTrash = [];
+    let allTrash = [];
     allTrash.push(new Trash(scene));
 
-    var chance = 0.005;
+    let chance = 0.005;
 
     setInterval(function() {
-        chance += 0.0001;
+        chance += 0.001;
 
         if (Math.random() <= chance) {
             allTrash.push(new Trash(scene));
@@ -173,10 +250,13 @@
     function handleMove(evt) {
         if (evt.buttons === 1) {
             boat.setTarget(evt.clientX * xScale, height - (evt.clientY * yScale));
-        } else {
-            boat.setTarget(evt.changedTouches[0].clientX * xScale, height - (evt.changedTouches[0].clientY * yScale));
         }
     }
+
+    function handleTouchMove(evt) {
+        boat.setTarget(evt.changedTouches[0].clientX * xScale, height - (evt.changedTouches[0].clientY * yScale));
+    }
+
     function handleStart(evt) {
         boat.setTarget(evt.clientX * xScale, height - (evt.clientY * yScale));
         isMoving = true;
@@ -187,7 +267,7 @@
     }
 
     window.addEventListener("mousemove", handleMove);
-    window.addEventListener("touchmove", handleMove);
+    window.addEventListener("touchmove", handleTouchMove);
 
     window.addEventListener("mousedown", handleStart);
     window.addEventListener("touchstart", handleStart);
@@ -195,24 +275,33 @@
     window.addEventListener("mouseup", handleEnd);
     window.addEventListener("touchend", handleEnd);
 
+
     var animate = function () {
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
 
+        boat.update();
         if (isMoving) {
             boat.move();
         }
 
         for (let i = allTrash.length - 1; i >= 0; i--) {
-            allTrash[i].update();
+            let trash = allTrash[i];
+            trash.update();
 
-            if (allTrash[i].line.position.x > width + 10) {
-                let trash = allTrash[i];
+            if (boat.space > 0 && boat.box.containsBox(trash.box)) {
                 scene.remove(trash.line);
-                allTrash.splice(i, 0);
+                allTrash.splice(i, 1);
+                boat.pickup(trash);
+            } else if (trash.line.position.x > width + 10) {
+                scene.remove(trash.line);
+                allTrash.splice(i, 1);
                 delete trash;
             }
         }
+
+        topbar.innerHTML = "Room: " + boat.space;
+
     };
 
     animate();
