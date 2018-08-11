@@ -123,7 +123,9 @@
 
         // Create the final object to add to the scene
         var ellipse = new THREE.Line( curveGeo, curveMat );
-        var ellipse2 = new THREE.Line( curveGeo2, curveMat );
+        var ellipse2 = new THREE.Line(curveGeo2, curveMat);
+
+        ellipse.position.set(0, 0, -1);
 
         this.obj = new THREE.Object3D();
         this.obj.add(ellipse);
@@ -136,7 +138,7 @@
 
         this.ellipse = ellipse;
         this.box = new THREE.Box3();
-        //this.fullBox = new THREE.Box3();
+        this.fullBox = new THREE.Box3();
 
         this.target = this.obj.position.clone();
 
@@ -180,53 +182,67 @@
                 return;
             }
 
-            //if (burner.box.intersectsBox(this.fullBox)) {
-            //    return;
-            //}
+            if (burner.box.containsPoint(this.target) && burner.box.intersectsBox(this.fullBox)) {
+                return;
+            }
+
+            if (burner.box.distanceToPoint(this.obj.position) < 10) {
+                for (let i = this.trash.length - 1; i >= 0; i--) {
+                    let trash = this.trash[i];
+                    this.obj.remove(trash.line);
+                    delete trash;
+                }
+                this.trash = [];
+                this.space = this.maxSpace;
+            }
 
             this.lookatTarget();
             let moveY = Math.cos(this.vectorAngle) * speed;
             let moveX = Math.sin(this.vectorAngle) * speed * -1;
-            this.obj.position.add(new THREE.Vector3(moveX, moveY, 1));
+            this.obj.position.add(new THREE.Vector3(moveX, moveY, 0));
         }
 
         this.update = function() {
             this.box.setFromObject(this.ellipse);
-            //this.fullBox.setFromObject(this.obj);
+            this.fullBox.setFromObject(this.obj);
         }
 
         this.pickup = function (trash) {
             this.space--;
             this.obj.add(trash.line);
             trash.line.position.set(0, -7, 0);
+            this.trash.push(trash);
         }
 
+        this.trash = [];
+
+        this.maxSpace = 5;
         this.space = 5;
     }
 
-    //function Burner() {
+    function Burner() {
 
-    //    let shape = new THREE.Shape();
-    //    shape.moveTo(0, 0);
-    //    shape.lineTo(0, 40);
-    //    shape.lineTo(40, 40);
-    //    shape.lineTo(40, 0);
-    //    shape.lineTo(0, 0);
+        let shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.lineTo(0, 40);
+        shape.lineTo(40, 40);
+        shape.lineTo(40, 0);
+        shape.lineTo(0, 0);
 
-    //    let material = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    //    let geo = new THREE.ShapeGeometry(shape);
-    //    let mesh = new THREE.Mesh(geo, material);
+        let material = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        let geo = new THREE.ShapeGeometry(shape);
+        let mesh = new THREE.Mesh(geo, material);
 
-    //    mesh.position.set(width - 50, 10, 0);
+        mesh.position.set(width - 50, 10, 0);
 
-    //    scene.add(mesh);
+        scene.add(mesh);
 
-    //    this.box = new THREE.Box3();
-    //    this.box.setFromObject(mesh);
+        this.box = new THREE.Box3();
+        this.box.setFromObject(mesh);
 
-    //}
+    }
 
-    //let burner = new Burner();
+    let burner = new Burner();
 
     let topbar = document.getElementById("topbar");
 
