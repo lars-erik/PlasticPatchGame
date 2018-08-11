@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "name": "asp.net",
+  "private": true,
+  "scripts": {
+    "test": "karma start"
+  },
+  "dependencies": {
+    "three": "0.95.0"
+  },
+  "devDependencies": {
+    "jasmine-core": "^3.2.0",
+    "karma": "^3.0.0",
+    "karma-jasmine": "^1.1.2",
+    "karma-phantomjs-launcher": "^1.0.4",
+    "phantomjs-prebuilt": "^2.1.16"
+  }
+}
