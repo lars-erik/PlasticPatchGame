@@ -24,6 +24,9 @@
     var noiseSet = new noise.perlin(noiseSize);
     var noiseScale = noiseSize / width;
 
+    var xScale = width / window.innerWidth;
+    var yScale = height / window.innerHeight;
+
     var gridUnit = width / 20;
 
     var renderer = new THREE.WebGLRenderer();
@@ -33,24 +36,29 @@
     camera.position.set(lookatX, lookatY, 100);
     camera.lookAt(new THREE.Vector3(lookatX, lookatY, 0));
 
-    var material = new THREE.LineBasicMaterial({ color: 0xffffff });
-
     scene.background = new THREE.Color(0x000088);
 
     function Trash(scene) {
-        let geometry = new THREE.Geometry();
+        let shape = new THREE.Shape();
+        let material = new THREE.MeshBasicMaterial({
+            color: Math.random() * 0xffffff
+        });
         let points = 3 + parseInt(Math.random() * 3);
         let angles = [];
         for (let i = 0; i < points; i++) {
             angles.push(Math.random() * Math.PI * 2);
         }
         angles.sort();
-        for (let i = 0; i < points; i++) {
-            geometry.vertices.push(new THREE.Vector3(Math.cos(angles[i]), Math.sin(angles[i], 0.1)));
-        }
-        geometry.vertices.push(geometry.vertices[0]);
+        let startPos = [Math.cos(angles[0]), Math.sin(angles[0])];
+        shape.moveTo(startPos[0], startPos[1]);
 
-        this.line = new THREE.Line(geometry, material);
+        for (let i = 1; i < points; i++) {
+            shape.lineTo(Math.cos(angles[i]), Math.sin(angles[i]));
+        }
+        shape.lineTo(startPos[0], startPos[1]);
+
+        let geometry = new THREE.ShapeGeometry(shape);
+        this.line = new THREE.Mesh(geometry, material);
         this.line.scale.set(3, 3, 0.1);
 
         scene.add(this.line);
@@ -67,6 +75,86 @@
         }
     }
 
+    function Boat(scene) {
+        let shape = new THREE.Shape();
+        shape.moveTo(-3, 0);
+        shape.lineTo(-3, 15);
+        shape.lineTo(0, 20);
+        shape.lineTo(3, 15);
+        shape.lineTo(3, 0);
+        shape.lineTo(0, 0);
+        let material = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        let geometry = new THREE.ShapeGeometry(shape);
+        let boatMesh = new THREE.Mesh(geometry, material);
+
+        var curve1 = new THREE.EllipseCurve(
+            0,  -7,            // ax, aY
+            7, 7,           // xRadius, yRadius
+            0,  2 * Math.PI,  // aStartAngle, aEndAngle
+            false,            // aClockwise
+            0                 // aRotation
+        );
+
+        var curve2 = new THREE.EllipseCurve(
+            0,  -7,            // ax, aY
+            6.9, 6.9,           // xRadius, yRadius
+            0,  2 * Math.PI,  // aStartAngle, aEndAngle
+            false,            // aClockwise
+            0                 // aRotation
+        );
+
+        var curveGeo = new THREE.BufferGeometry().setFromPoints(curve1.getPoints(50));
+        var curveGeo2 = new THREE.BufferGeometry().setFromPoints(curve2.getPoints(50));
+        var curveMat = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+
+        // Create the final object to add to the scene
+        var ellipse = new THREE.Line( curveGeo, curveMat );
+        var ellipse2 = new THREE.Line( curveGeo2, curveMat );
+
+        this.obj = new THREE.Object3D();
+        this.obj.add(ellipse);
+        this.obj.add(ellipse2);
+        this.obj.add(boatMesh);
+
+        this.obj.position.set(width / 2, height / 2, 0);
+
+        scene.add(this.obj);
+
+        this.lookatTarget = function() {
+            let ang = 0;
+            if (this.target.x > this.obj.position.x) {
+                let opp = this.target.y - this.obj.position.y;
+                let hyp = Math.sqrt(Math.pow(opp, 2) + Math.pow(this.target.x - this.obj.position.x, 2));
+                let sin = opp / hyp;
+                ang = Math.asin(sin) - Math.PI / 2;
+            } else {
+                let opp = this.obj.position.y - this.target.y;
+                let adj = this.obj.position.x - this.target.x;
+                let tan = opp / adj;
+                ang = Math.atan(tan) + Math.PI / 2;
+            }
+            this.vectorAngle = ang;
+            this.obj.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), ang);
+        }
+
+        this.vector = new THREE.Vector3(0, 0, 0);
+
+        this.setTarget = function (x, y) {
+            this.target = new THREE.Vector3(x, y, 0);
+            this.lookatTarget();
+        }
+
+        let speed = 1;
+        this.move = function () {
+            this.lookatTarget();
+            let moveY = Math.cos(this.vectorAngle) * speed;
+            let moveX = Math.sin(this.vectorAngle) * speed * -1;
+            this.obj.position.add(new THREE.Vector3(moveX, moveY, 0));
+        }
+    }
+
+    let boat = new Boat(scene);
+
     var allTrash = [];
     allTrash.push(new Trash(scene));
 
@@ -75,18 +163,44 @@
     setInterval(function() {
         chance += 0.0001;
 
-        console.log(chance);
+        if (Math.random() <= chance) {
+            allTrash.push(new Trash(scene));
+        }
     }, 300);
+
+    let isMoving = false;
+
+    function handleMove(evt) {
+        if (evt.buttons === 1) {
+            boat.setTarget(evt.clientX * xScale, height - (evt.clientY * yScale));
+        } else {
+            boat.setTarget(evt.changedTouches[0].clientX * xScale, height - (evt.changedTouches[0].clientY * yScale));
+        }
+    }
+    function handleStart(evt) {
+        boat.setTarget(evt.clientX * xScale, height - (evt.clientY * yScale));
+        isMoving = true;
+    }
+
+    function handleEnd() {
+        isMoving = false;
+    }
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("touchmove", handleMove);
+
+    window.addEventListener("mousedown", handleStart);
+    window.addEventListener("touchstart", handleStart);
+
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchend", handleEnd);
 
     var animate = function () {
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
 
-        if (Math.random() <= chance) {
-            for (let i = 0; i < Math.random() * 2; i++) {
-                allTrash.push(new Trash(scene));
-                console.log("added trash");
-            }
+        if (isMoving) {
+            boat.move();
         }
 
         for (let i = allTrash.length - 1; i >= 0; i--) {
