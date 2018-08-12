@@ -9,7 +9,6 @@
             overflow: hidden;
             font-family: Russo One;
             background-color: #000088;
-
             -webkit-touch-callout: none; /* iOS Safari */
             -webkit-user-select: none; /* Safari */
             -khtml-user-select: none; /* Konqueror HTML */
@@ -118,7 +117,7 @@
         <p>Good luck!</p>
 
         <button id="startBtn">Start game</button>
-        
+
         <p>Steer with mouse. Press U to upgrade.</p>
     </div>
     <div id="gameover">
@@ -551,7 +550,7 @@
                 gameover.style.display = "inline-block";
             }
 
-            this.reset = function() {
+            this.reset = function () {
                 cash = 0;
                 lost = 0;
                 this.wildlife = 1000000;
@@ -611,5 +610,16 @@
         restartBtn.addEventListener("click", restart);
 
     </script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-44569969-8"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'UA-44569969-8');
+    </script>
+
 </body>
 </html>
