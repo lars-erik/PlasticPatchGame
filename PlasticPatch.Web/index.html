@@ -46,7 +46,7 @@
         }
 
         #intro {
-            width: 320px;
+            width: 350px;
             position: fixed;
             left: 50%;
             top: 50%;
@@ -136,7 +136,11 @@
 
         function Game() {
 
-            let tick = 100;
+            let tick = 200;
+            let additionalThreshold = 700;
+            let chanceIncrease = 0.001;
+            let growOutput = .1;
+            let chance = 0.005;
 
             let self = this;
             let scene = new THREE.Scene();
@@ -174,20 +178,19 @@
             let allTrash = [];
             allTrash.push(new Trash(scene, noiseSet, this));
 
-            let chance = 0.005;
             let ticks = 0;
             let interval;
 
             let gameOver = false;
 
             function nextTick() {
-                chance += 0.001;
+                chance += chanceIncrease;
 
                 if (self.outputSize < self.height - 10) {
-                    self.outputSize += .1;
+                    self.outputSize += growOutput;
                 }
 
-                for (let i = 0; i < ticks / 100; i++) {
+                for (let i = 0; i < ticks / additionalThreshold; i++) {
                     if (Math.random() <= chance) {
                         allTrash.push(new Trash(scene, noiseSet, self));
                     }
@@ -500,7 +503,7 @@
 
             this.addLost = function () {
                 lost++;
-                this.wildlife -= Math.max(0, parseInt(Math.random() * 10000));
+                this.wildlife = Math.max(0, this.wildlife - parseInt(Math.random() * 10000));
                 lostSpan.innerHTML = lost;
                 wildlifeSpan.innerHTML = this.wildlife;
             }
