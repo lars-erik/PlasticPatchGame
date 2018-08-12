@@ -133,6 +133,23 @@
         <button id="restartBtn">Restart game</button>
     </div>
     <script>
+        let litterSounds = [
+            new Audio("sounds/litter1.wav"),
+            new Audio("sounds/litter2.wav"),
+            new Audio("sounds/litter3.wav")
+        ];
+
+        let pickupSounds = [
+            new Audio("sounds/pickup1.wav"),
+            new Audio("sounds/pickup2.wav")
+        ];
+
+        let dropSounds = [
+            new Audio("sounds/drop1.wav"),
+            new Audio("sounds/drop2.wav")
+        ];
+
+        let gameOverSound = new Audio("sounds/gameover.wav");
 
         function Game() {
 
@@ -193,6 +210,8 @@
                 for (let i = 0; i < ticks / additionalThreshold; i++) {
                     if (Math.random() <= chance) {
                         allTrash.push(new Trash(scene, noiseSet, self));
+                        let soundNo = parseInt(Math.random() * 3);
+                        litterSounds[soundNo].play();
                     }
                 }
 
@@ -239,8 +258,10 @@
 
                 if (gui.wildlife <= 0) {
                     gameOver = true;
+                    gameOverSound.play();
                     window.clearInterval(interval);
                     gui.showGameOver();
+
                 } else {
                     requestAnimationFrame(animate);
                 }
@@ -260,6 +281,10 @@
                         scene.remove(trash.line);
                         allTrash.splice(i, 1);
                         boat.pickup(trash);
+
+                        let pickupSound = parseInt(Math.random() * pickupSounds.length);
+                        pickupSounds[pickupSound].play();
+
                     } else if (trash.line.position.x > self.width + 10) {
                         scene.remove(trash.line);
                         allTrash.splice(i, 1);
@@ -434,6 +459,11 @@
                 }
 
                 if (burner.box.distanceToPoint(this.obj.position) < 20) {
+                    if (this.trash.length) {
+                        let dropSound = parseInt(Math.random() * dropSounds.length);
+                        dropSounds[dropSound].play();
+                    }
+
                     for (let i = this.trash.length - 1; i >= 0; i--) {
                         let trash = this.trash[i];
                         this.obj.remove(trash.line);
