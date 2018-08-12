@@ -4,306 +4,579 @@
     <meta charset="utf-8" />
     <title></title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        canvas { width: 100%; height: 100% }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Russo One;
+            background-color: #000088;
+
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+        }
+
+        button {
+            font-family: Russo One;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%
+        }
+
         #topbar {
             position: absolute;
             right: 10px;
             top: 10px;
             color: white;
+            font-size: 16pt;
+            border: 2px outset #1e90ff;
+            background-color: #32cd32;
+            display: none;
+        }
+
+        .topBlock {
+            border: 1px inset #1e90ff;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        #intro {
+            width: 320px;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            margin-left: -150px;
+            margin-top: -230px;
+            color: white;
+            font-size: 14pt;
+        }
+
+        #gameover {
+            width: 320px;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            margin-left: -150px;
+            margin-top: -180px;
+            color: white;
+            font-size: 14pt;
+            display: none;
+            background-color: black;
+            border: 1px solid white;
+            padding: 10px;
+        }
+
+        #startBtn {
+            background-color: green;
+            border: 1px outset lightgreen;
+            padding: 5px;
+            color: white;
+        }
+
+        #upgradeBtn {
         }
     </style>
+    <link href="https://fonts.googleapis.com/css?family=Russo+One" rel="stylesheet">
 </head>
 <body>
     <script src="scripts/three.js"></script>
-<script src="scripts/perlin.js"></script>
-<div id="topbar">
-    Space: 5
-</div>
-<script>
+    <script src="scripts/perlin.js"></script>
+    <div id="topbar">
+        <div>
+            <span class="topBlock">
+                Cash: <span id="cash">$ 0</span>
+            </span>
+            <span class="topBlock">
+                Wildlife: <span id="wildlife">1000000</span>
+            </span>
+            <span class="topBlock">
+                Plastic lost: <span id="lost">0</span>
+            </span>
+            <span class="topBlock">
+                Space: <span id="space">5</span>
+            </span>
+        </div>
+        <div>
+            <button id="upgradeBtn" disabled="disabled">Upgrade for $50</button>
+        </div>
+    </div>
+    <div id="intro">
+        <h3>Pacific Plastic Patch Cleanup</h3>
+        <p>The year is 2018.</p>
+        <p>
+            Humans have littered the oceans with plastic.
+            There is a huge plastic patch building up in the Pacific.
+            It's up to you to clean it up.
+            The governments will pay you cents for your efforts
+            so you can upgrade and get better.
+        </p>
+        <p>Good luck!</p>
 
-    var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 1, 1000);
-    var vFOV = THREE.Math.degToRad(camera.fov); // convert vertical fov to radians
-    var height = 2 * Math.tan(vFOV / 2) * 100; // visible height
-    var width = height * camera.aspect;           // visible width
-    var lookatX = width / 2;
-    var lookatY = height / 2;
-    var noiseSize = 5;
-    var noiseSet = new noise.perlin(noiseSize);
-    var noiseScale = noiseSize / width;
+        <button id="startBtn">Start game</button>
+        
+        <p>Steer with mouse. Press U to upgrade.</p>
+    </div>
+    <div id="gameover">
+        <h3>Game over.</h3>
+        <p>
+            All the fish and birds are dead.
+            Your efforts were futile.
+            People should probably just stop littering the sea instead.
+        </p>
+        <p>Try again?</p>
 
-    var xScale = width / window.innerWidth;
-    var yScale = height / window.innerHeight;
+        <button id="restartBtn">Restart game</button>
+    </div>
+    <script>
 
-    var gridUnit = width / 20;
+        function Game() {
 
-    var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+            let tick = 100;
 
-    camera.position.set(lookatX, lookatY, 100);
-    camera.lookAt(new THREE.Vector3(lookatX, lookatY, 0));
+            let self = this;
+            let scene = new THREE.Scene();
+            let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 1, 1000);
+            let vFOV = THREE.Math.degToRad(camera.fov); // convert vertical fov to radians
+            this.height = 2 * Math.tan(vFOV / 2) * 100; // visible height
+            this.width = this.height * camera.aspect;           // visible width
+            let lookatX = this.width / 2;
+            let lookatY = this.height / 2;
+            let noiseSize = 5;
+            let noiseSet = new noise.perlin(noiseSize);
+            this.noiseScale = noiseSize / this.width;
 
-    scene.background = new THREE.Color(0x000088);
+            let xScale = this.width / window.innerWidth;
+            let yScale = this.height / window.innerHeight;
 
-    function Trash(scene) {
-        let shape = new THREE.Shape();
-        let material = new THREE.MeshBasicMaterial({
-            color: Math.random() * 0xffffff
-        });
-        let points = 3 + parseInt(Math.random() * 3);
-        let angles = [];
-        for (let i = 0; i < points; i++) {
-            angles.push(Math.random() * Math.PI * 2);
-        }
-        angles.sort();
-        let startPos = [Math.cos(angles[0]), Math.sin(angles[0])];
-        shape.moveTo(startPos[0], startPos[1]);
 
-        for (let i = 1; i < points; i++) {
-            shape.lineTo(Math.cos(angles[i]), Math.sin(angles[i]));
-        }
-        shape.lineTo(startPos[0], startPos[1]);
+            let renderer = new THREE.WebGLRenderer();
 
-        let geometry = new THREE.ShapeGeometry(shape);
-        this.line = new THREE.Mesh(geometry, material);
-        this.line.scale.set(3, 3, 0.1);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
 
-        scene.add(this.line);
+            camera.position.set(lookatX, lookatY, 100);
+            camera.lookAt(new THREE.Vector3(lookatX, lookatY, 0));
 
-        this.line.position.set(-10, height / 2 + (Math.random() * height / 5) - (height / 10 * Math.random()), 0);
-        this.vector = new THREE.Vector3(.001, Math.random() * height, 0);
+            scene.background = new THREE.Color(0x000088);
 
-        this.box = new THREE.Box3();
-        this.box.setFromObject(this.line);
+            this.outputSize = 5;
 
-        this.update = function () {
-            var ang = Math.atan(this.vector.y);
-            var force = noiseSet.noise([Math.abs(this.line.position.x * noiseScale), Math.abs(this.line.position.y * noiseScale)]);
-            var newAng = ang + force;
-            var newVector = new THREE.Vector3(Math.sin(newAng) * .1, Math.cos(newAng) * -.1, 0);
-            this.line.position.add(newVector);
-            this.box.setFromObject(this.line);
+            let gui = new Gui(this);
+            let burner = new Burner(scene, this);
+            let boat = new Boat(scene, burner, this, gui);
+            this.boat = boat;
 
-        }
-    }
+            let allTrash = [];
+            allTrash.push(new Trash(scene, noiseSet, this));
 
-    function Boat(scene) {
+            let chance = 0.005;
+            let ticks = 0;
+            let interval;
 
-        var spriteMap = new THREE.TextureLoader().load( "Images/Boat.png" );
-        var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff } );
-        var sprite = new THREE.Sprite( spriteMaterial );
-        sprite.scale.set(20, 40, 0);
-        sprite.position.set(0, 3, 1);
+            let gameOver = false;
 
-        var curve1 = new THREE.EllipseCurve(
-            0,  -7,            // ax, aY
-            7, 7,           // xRadius, yRadius
-            0,  2 * Math.PI,  // aStartAngle, aEndAngle
-            false,            // aClockwise
-            0                 // aRotation
-        );
+            function nextTick() {
+                chance += 0.001;
 
-        var curveGeo = new THREE.BufferGeometry().setFromPoints(curve1.getPoints(50));
-        var curveMat = new THREE.LineBasicMaterial( { color : 0x000088 } );
+                if (self.outputSize < self.height - 10) {
+                    self.outputSize += .1;
+                }
 
-        // Create the final object to add to the scene
-        var ellipse = new THREE.Line( curveGeo, curveMat );
+                for (let i = 0; i < ticks / 100; i++) {
+                    if (Math.random() <= chance) {
+                        allTrash.push(new Trash(scene, noiseSet, self));
+                    }
+                }
 
-        ellipse.position.set(0, 0, -1);
-
-        this.obj = new THREE.Object3D();
-        this.obj.add(ellipse);
-        this.obj.add(sprite);
-
-        this.obj.position.set(width / 2, height / 2, 1);
-
-        scene.add(this.obj);
-
-        this.ellipse = ellipse;
-        this.box = new THREE.Box3();
-        this.fullBox = new THREE.Box3();
-
-        this.target = this.obj.position.clone();
-
-        this.lookatTarget = function() {
-            let ang = 0;
-            if (this.target.x > this.obj.position.x) {
-                let opp = this.target.y - this.obj.position.y;
-                let hyp = Math.sqrt(Math.pow(opp, 2) + Math.pow(this.target.x - this.obj.position.x, 2));
-                let sin = opp / hyp;
-                ang = Math.asin(sin) - Math.PI / 2;
-            } else {
-                let opp = this.obj.position.y - this.target.y;
-                let adj = this.obj.position.x - this.target.x;
-                let tan = opp / adj;
-                ang = Math.atan(tan) + Math.PI / 2;
-            }
-            this.vectorAngle = ang;
-            spriteMaterial.rotation = ang;
-            this.obj.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), ang);
-        }
-
-        this.vector = new THREE.Vector3(0, 0, 0);
-
-        this.setTarget = function (x, y) {
-            let xDist = Math.abs(this.target.x - x);
-            let yDist = Math.abs(this.target.y - y);
-
-            if (xDist < 3 && yDist < 3) {
-                return;
+                ticks++;
             }
 
-            this.target.set(x, y, 0);
-            this.lookatTarget();
-        }
-
-        let speed = 1;
-        this.move = function () {
-            let xDist = Math.abs(this.target.x - this.obj.position.x);
-            let yDist = Math.abs(this.target.y - this.obj.position.y);
-
-            if (xDist < 3 && yDist < 3) {
-                return;
+            this.start = function () {
+                interval = setInterval(nextTick, tick);
             }
 
-            if (burner.box.containsPoint(this.target) && burner.box.intersectsBox(this.fullBox)) {
-                return;
+
+            let isMoving = false;
+
+            function handleMove(evt) {
+                if (evt.buttons === 1) {
+                    boat.setTarget(evt.clientX * xScale, self.height - (evt.clientY * yScale));
+                }
             }
 
-            if (burner.box.distanceToPoint(this.obj.position) < 20) {
-                for (let i = this.trash.length - 1; i >= 0; i--) {
-                    let trash = this.trash[i];
-                    this.obj.remove(trash.line);
+            function handleTouchMove(evt) {
+                boat.setTarget(evt.changedTouches[0].clientX * xScale, self.height - (evt.changedTouches[0].clientY * yScale));
+            }
+
+            function handleStart(evt) {
+                boat.setTarget(evt.clientX * xScale, self.height - (evt.clientY * yScale));
+                isMoving = true;
+            }
+
+            function handleEnd() {
+                isMoving = false;
+            }
+
+            window.addEventListener("mousemove", handleMove);
+            window.addEventListener("touchmove", handleTouchMove);
+
+            window.addEventListener("mousedown", handleStart);
+            window.addEventListener("touchstart", handleStart);
+
+            window.addEventListener("mouseup", handleEnd);
+            window.addEventListener("touchend", handleEnd);
+
+
+            let animate = function () {
+
+                if (gui.wildlife <= 0) {
+                    gameOver = true;
+                    window.clearInterval(interval);
+                    gui.showGameOver();
+                } else {
+                    requestAnimationFrame(animate);
+                }
+
+                renderer.render(scene, camera);
+
+                boat.update();
+                if (isMoving) {
+                    boat.move();
+                }
+
+                for (let i = allTrash.length - 1; i >= 0; i--) {
+                    let trash = allTrash[i];
+                    trash.update();
+
+                    if (boat.space > 0 && boat.box.containsBox(trash.box)) {
+                        scene.remove(trash.line);
+                        allTrash.splice(i, 1);
+                        boat.pickup(trash);
+                    } else if (trash.line.position.x > self.width + 10) {
+                        scene.remove(trash.line);
+                        allTrash.splice(i, 1);
+                        delete trash;
+
+                        gui.addLost();
+                    }
+                }
+
+                gui.setSpace(boat.space);
+
+            };
+
+            animate();
+
+
+            this.restart = function () {
+                for (let i = 0; i < allTrash.length; i++) {
+                    scene.remove(allTrash[i].line);
+                    delete allTrash[i];
+                }
+                allTrash = [];
+
+                for (let i = boat.trash.length - 1; i >= 0; i--) {
+                    let trash = boat.trash[i];
+                    boat.obj.remove(trash.line);
                     delete trash;
                 }
-                this.trash = [];
-                this.space = this.maxSpace;
-            }
+                boat.trash = [];
+                boat.maxSpace = 5;
+                boat.space = 5;
 
-            this.lookatTarget();
-            let moveY = Math.cos(this.vectorAngle) * speed;
-            let moveX = Math.sin(this.vectorAngle) * speed * -1;
-            this.obj.position.add(new THREE.Vector3(moveX, moveY, 0));
-        }
+                chance = 0.005;
+                this.outputSize = 5;
+                ticks = 0;
 
-        this.update = function() {
-            this.box.setFromObject(this.ellipse);
-            this.fullBox.setFromObject(this.obj);
-        }
+                gui.reset();
 
-        this.pickup = function (trash) {
-            this.space--;
-            this.obj.add(trash.line);
-            trash.line.position.set(0, -7, 0);
-            this.trash.push(trash);
-        }
-
-        this.trash = [];
-
-        this.maxSpace = 5;
-        this.space = 5;
-    }
-
-    function Burner(scene) {
-
-        let spriteMap = new THREE.TextureLoader().load("Images/Burner.png");
-        let spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
-        let sprite = new THREE.Sprite(spriteMaterial);
-
-        sprite.scale.set(90, 90, 0);
-        sprite.position.set(width - 47, 7, 2);
-
-        this.obj = new THREE.Object3D();
-        this.obj.add(sprite);
-
-        scene.add(this.obj);
-
-        this.box = new THREE.Box3(new THREE.Vector3(width - 100, 0, 0), new THREE.Vector3(width, 24, 0));
-    }
-
-
-    let topbar = document.getElementById("topbar");
-
-    let boat = new Boat(scene);
-
-    let burner = new Burner(scene);
-
-    let allTrash = [];
-    allTrash.push(new Trash(scene));
-
-    let chance = 0.005;
-
-    setInterval(function() {
-        chance += 0.001;
-
-        if (Math.random() <= chance) {
-            allTrash.push(new Trash(scene));
-        }
-    }, 300);
-
-    let isMoving = false;
-
-    function handleMove(evt) {
-        if (evt.buttons === 1) {
-            boat.setTarget(evt.clientX * xScale, height - (evt.clientY * yScale));
-        }
-    }
-
-    function handleTouchMove(evt) {
-        boat.setTarget(evt.changedTouches[0].clientX * xScale, height - (evt.changedTouches[0].clientY * yScale));
-    }
-
-    function handleStart(evt) {
-        boat.setTarget(evt.clientX * xScale, height - (evt.clientY * yScale));
-        isMoving = true;
-    }
-
-    function handleEnd() {
-        isMoving = false;
-    }
-
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("touchmove", handleTouchMove);
-
-    window.addEventListener("mousedown", handleStart);
-    window.addEventListener("touchstart", handleStart);
-
-    window.addEventListener("mouseup", handleEnd);
-    window.addEventListener("touchend", handleEnd);
-
-
-    var animate = function () {
-        requestAnimationFrame(animate);
-        renderer.render(scene, camera);
-
-        boat.update();
-        if (isMoving) {
-            boat.move();
-        }
-
-        for (let i = allTrash.length - 1; i >= 0; i--) {
-            let trash = allTrash[i];
-            trash.update();
-
-            if (boat.space > 0 && boat.box.containsBox(trash.box)) {
-                scene.remove(trash.line);
-                allTrash.splice(i, 1);
-                boat.pickup(trash);
-            } else if (trash.line.position.x > width + 10) {
-                scene.remove(trash.line);
-                allTrash.splice(i, 1);
-                delete trash;
+                gameOver = false;
+                this.start();
+                animate();
             }
         }
 
-        topbar.innerHTML = "Room: " + boat.space;
 
-    };
+        function Trash(scene, noiseSet, game) {
+            let shape = new THREE.Shape();
+            let material = new THREE.MeshBasicMaterial({
+                color: Math.random() * 0xffffff
+            });
+            let points = 3 + parseInt(Math.random() * 3);
+            let angles = [];
+            for (let i = 0; i < points; i++) {
+                angles.push(Math.random() * Math.PI * 2);
+            }
+            angles.sort();
+            let startPos = [Math.cos(angles[0]), Math.sin(angles[0])];
+            shape.moveTo(startPos[0], startPos[1]);
 
-    animate();
+            for (let i = 1; i < points; i++) {
+                shape.lineTo(Math.cos(angles[i]), Math.sin(angles[i]));
+            }
+            shape.lineTo(startPos[0], startPos[1]);
 
-</script>
+            let geometry = new THREE.ShapeGeometry(shape);
+            this.line = new THREE.Mesh(geometry, material);
+            this.line.scale.set(3, 3, 0.1);
+
+            scene.add(this.line);
+
+            let middle = game.height / 2;
+            let y = middle + (Math.random() * game.outputSize) - (game.outputSize / 2);
+
+            this.line.position.set(-10, y, 0);
+            this.vector = new THREE.Vector3(.001, Math.random() * game.height, 0);
+
+            this.box = new THREE.Box3();
+            this.box.setFromObject(this.line);
+
+            this.update = function () {
+                var ang = Math.atan(this.vector.y);
+                var force = noiseSet.noise([Math.abs(this.line.position.x * game.noiseScale), Math.abs(this.line.position.y * game.noiseScale)]);
+                var newAng = ang + force;
+                var newVector = new THREE.Vector3(Math.sin(newAng) * .1, Math.cos(newAng) * -.1, 0);
+                this.line.position.add(newVector);
+                this.box.setFromObject(this.line);
+
+            }
+        }
+
+        function Boat(scene, burner, game, gui) {
+
+            var spriteMap = new THREE.TextureLoader().load("Images/Boat.png");
+            var spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
+            var sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(20, 40, 0);
+            sprite.position.set(0, 3, 1);
+
+            var curve1 = new THREE.EllipseCurve(
+                0, -7,            // ax, aY
+                7, 7,           // xRadius, yRadius
+                0, 2 * Math.PI,  // aStartAngle, aEndAngle
+                false,            // aClockwise
+                0                 // aRotation
+            );
+
+            var curveGeo = new THREE.BufferGeometry().setFromPoints(curve1.getPoints(50));
+            var curveMat = new THREE.LineBasicMaterial({ color: 0x000088 });
+
+            // Create the final object to add to the scene
+            var ellipse = new THREE.Line(curveGeo, curveMat);
+
+            ellipse.position.set(0, 0, -1);
+
+            this.obj = new THREE.Object3D();
+            this.obj.add(ellipse);
+            this.obj.add(sprite);
+
+            this.obj.position.set(game.width / 2, game.height / 2, 1);
+
+            scene.add(this.obj);
+
+            this.ellipse = ellipse;
+            this.box = new THREE.Box3();
+            this.fullBox = new THREE.Box3();
+
+            this.target = this.obj.position.clone();
+
+            this.lookatTarget = function () {
+                let ang = 0;
+                if (this.target.x > this.obj.position.x) {
+                    let opp = this.target.y - this.obj.position.y;
+                    let hyp = Math.sqrt(Math.pow(opp, 2) + Math.pow(this.target.x - this.obj.position.x, 2));
+                    let sin = opp / hyp;
+                    ang = Math.asin(sin) - Math.PI / 2;
+                } else {
+                    let opp = this.obj.position.y - this.target.y;
+                    let adj = this.obj.position.x - this.target.x;
+                    let tan = opp / adj;
+                    ang = Math.atan(tan) + Math.PI / 2;
+                }
+                this.vectorAngle = ang;
+                spriteMaterial.rotation = ang;
+                this.obj.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), ang);
+            }
+
+            this.vector = new THREE.Vector3(0, 0, 0);
+
+            this.setTarget = function (x, y) {
+                let xDist = Math.abs(this.target.x - x);
+                let yDist = Math.abs(this.target.y - y);
+
+                if (xDist < 3 && yDist < 3) {
+                    return;
+                }
+
+                this.target.set(x, y, 0);
+                this.lookatTarget();
+            }
+
+            let speed = 1;
+            this.move = function () {
+                let xDist = Math.abs(this.target.x - this.obj.position.x);
+                let yDist = Math.abs(this.target.y - this.obj.position.y);
+
+                if (xDist < 3 && yDist < 3) {
+                    return;
+                }
+
+                if (burner.box.containsPoint(this.target) && burner.box.intersectsBox(this.fullBox)) {
+                    return;
+                }
+
+                if (burner.box.distanceToPoint(this.obj.position) < 20) {
+                    for (let i = this.trash.length - 1; i >= 0; i--) {
+                        let trash = this.trash[i];
+                        this.obj.remove(trash.line);
+                        delete trash;
+
+                        gui.addCash();
+                    }
+                    this.trash = [];
+                    this.space = this.maxSpace;
+                }
+
+                this.lookatTarget();
+                let moveY = Math.cos(this.vectorAngle) * speed;
+                let moveX = Math.sin(this.vectorAngle) * speed * -1;
+                this.obj.position.add(new THREE.Vector3(moveX, moveY, 0));
+            }
+
+            this.update = function () {
+                this.box.setFromObject(this.ellipse);
+                this.fullBox.setFromObject(this.obj);
+            }
+
+            this.pickup = function (trash) {
+                this.space--;
+                this.obj.add(trash.line);
+                trash.line.position.set(0, -7, 0);
+                this.trash.push(trash);
+            }
+
+            this.trash = [];
+
+            this.maxSpace = 5;
+            this.space = 5;
+        }
+
+        function Burner(scene, game) {
+
+            let spriteMap = new THREE.TextureLoader().load("Images/Burner.png");
+            let spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
+            let sprite = new THREE.Sprite(spriteMaterial);
+
+            sprite.scale.set(90, 90, 0);
+            sprite.position.set(game.width - 47, 7, 3);
+
+            this.obj = new THREE.Object3D();
+            this.obj.add(sprite);
+
+            scene.add(this.obj);
+
+            this.box = new THREE.Box3(new THREE.Vector3(game.width - 100, 0, 0), new THREE.Vector3(game.width, 24, 0));
+        }
+
+        function Gui(game) {
+            let spaceSpan = document.getElementById("space");
+            let wildlifeSpan = document.getElementById("wildlife");
+            let lostSpan = document.getElementById("lost");
+            let cashSpan = document.getElementById("cash");
+            let upgradeBtn = document.getElementById("upgradeBtn");
+
+            let cash = 0;
+            let lost = 0;
+            this.wildlife = 1000000;
+
+            this.setSpace = function (value) {
+                spaceSpan.innerHTML = value;
+            }
+
+            this.addLost = function () {
+                lost++;
+                this.wildlife -= Math.max(0, parseInt(Math.random() * 10000));
+                lostSpan.innerHTML = lost;
+                wildlifeSpan.innerHTML = this.wildlife;
+            }
+
+            this.addCash = function () {
+                cash += 1;
+                cashSpan.innerHTML = "$ " + cash;
+
+                if (cash >= 50) {
+                    upgradeBtn.removeAttribute("disabled");
+                }
+            }
+
+            this.showGameOver = function () {
+                gameover.style.display = "inline-block";
+            }
+
+            this.reset = function() {
+                cash = 0;
+                lost = 0;
+                this.wildlife = 1000000;
+
+                lostSpan.innerHTML = lost;
+                wildlifeSpan.innerHTML = this.wildlife;
+                cashSpan.innerHTML = "$" + cash;
+                spaceSpan.innerHTML = 5;
+            }
+
+            function upgrade() {
+                if (cash < 50) {
+                    return;
+                }
+
+                game.boat.maxSpace += 5;
+                game.boat.space = Math.min(game.boat.space + 5, game.boat.maxSpace);
+                cash -= 50;
+                cashSpan.innerHTML = "$" + cash;
+
+                if (cash < 50) {
+                    upgradeBtn.setAttribute("disabled", "disabled");
+                }
+            }
+
+            upgradeBtn.addEventListener("click", upgrade);
+
+            window.addEventListener("keypress", upgrade);
+
+        }
+
+        function start() {
+            gameover.style.display = "none";
+            intro.style.display = "none";
+            topbar.style.display = "inline-block";
+
+            game = new Game();
+            game.start();
+        }
+
+        function restart() {
+            gameover.style.display = "none";
+            intro.style.display = "none";
+            topbar.style.display = "inline-block";
+
+            game.restart();
+        }
+
+        let game;
+        let intro = document.getElementById("intro");
+        let topbar = document.getElementById("topbar");
+        let startBtn = document.getElementById("startBtn");
+        let gameover = document.getElementById("gameover");
+        let restartBtn = document.getElementById("restartBtn");
+
+        startBtn.addEventListener("click", start);
+        restartBtn.addEventListener("click", restart);
+
+    </script>
 </body>
 </html>
