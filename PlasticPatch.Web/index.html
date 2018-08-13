@@ -152,11 +152,12 @@
 
         function Game() {
 
-            let tick = 200;
-            let additionalThreshold = 700;
+            let tick = 250;
+            let additionalThreshold = 600;
             let chanceIncrease = 0.001;
             let growOutput = .1;
-            let chance = 0.005;
+            let initialChance = 0.05;
+            let chance = initialChance;
 
             let self = this;
             let scene = new THREE.Scene();
@@ -316,7 +317,7 @@
                 boat.maxSpace = 5;
                 boat.space = 5;
 
-                chance = 0.005;
+                chance = initialChance;
                 this.outputSize = 5;
                 ticks = 0;
 
@@ -363,11 +364,13 @@
             this.box = new THREE.Box3();
             this.box.setFromObject(this.line);
 
+            this.speed = .15;
+
             this.update = function () {
                 var ang = Math.atan(this.vector.y);
                 var force = noiseSet.noise([Math.abs(this.line.position.x * game.noiseScale), Math.abs(this.line.position.y * game.noiseScale)]);
                 var newAng = ang + force;
-                var newVector = new THREE.Vector3(Math.sin(newAng) * .1, Math.cos(newAng) * -.1, 0);
+                var newVector = new THREE.Vector3(Math.sin(newAng) * this.speed, Math.cos(newAng) * this.speed * -1, 0);
                 this.line.position.add(newVector);
                 this.box.setFromObject(this.line);
 
@@ -444,7 +447,7 @@
                 this.lookatTarget();
             }
 
-            let speed = 1;
+            let speed = 1.5;
             this.move = function () {
                 let xDist = Math.abs(this.target.x - this.obj.position.x);
                 let yDist = Math.abs(this.target.y - this.obj.position.y);
